@@ -1,0 +1,95 @@
+https://oeis.org/A291792
+
+William, There are a lot of different tag systems,
+but the one I am most interested is Emil Post's 
+first love, the one described by (see A284116):
+
+(*) Post's tag system {00, 1101} maps a word w over {0,1} to w', where if w begins with 0, w' is obtained by appending 00 to w and deleting the first three letters, or if w begins with 1, w' is obtained by appending 1101 to w and deleting the first three letters.
+------------------------------
+The specific and potentially important question I asked you is:
+If we start with the initial string (100)^n and repeatedly apply the Post map (*), how long before the result either dies or enters a loop, or  (the $64000 question) can it increase for ever?
+
+See A284119 for the n's such that (100)^n eventually dies by reaching the empty string : 5 (see below), 13, 14, 22, 25, 46, 47, 54, 63, 65, 70, 74, 78, 80, 91, 93, 106, and the next term is either 110 or a bigger number.
+Up though n=109 everything either dies or enters a cycle.
+A284121 shows how long it takes.
+
+A291792 describes what Lars Blomberg did, when he computed the trajectory of (100)^110, and found that it is had not yet died after a lot of steps.  He says 
+When n = 110, the starting word (100)^n = (100)^110 reaches a word of length 10^7 after 38*10^11 iterations, but beyond this its fate is unknown. 
+
+------------------------------------------------
+There are a lot of related sequences in the OEIS. A284116 was the mother sequence, and that has cross-references to most of the others.
+
+A289673 shows what happens to k in one step.
+-------------------------------------------------
+
+Here is Maple code showing that (100)^5 dies: I use "-1" for the empty or null string.
+
+T0:="00"; T1:="1101";
+with(StringTools):
+# the mapping:
+f1:=proc(w) local L, ws, w2; global T0, T1;
+ws:=convert(w, string);
+if ws="-1" then return("-1"); fi;
+if ws[1]="0" then w2:=Join([ws, T0], ""); else w2:=Join([ws, T1], "");  fi;
+L:=length(w2); if L <= 3 then return("-1"); fi;
+w2[4..L]; 
+end proc;
+
+Example:
+The starting string (100)^5:
+                               "100100100100100"
+The start of the trajectory:
+> f1(w);
+                               "1001001001001101"
+
+> f1(%);
+                              "10010010011011101"
+
+> f1(%);
+                              "100100110111011101"
+
+> f1(%);
+                             "1001101110111011101"
+
+> f1(%);
+                             "11011101110111011101"
+
+> f1(%);
+                            "111011101110111011101"
+
+> f1(%);
+                            "0111011101110111011101"
+
+and it increases for a long time, but it dies after about 411 steps.
+
+
+-----
+
+You can see that up to 109, there are some fairly large jumps, e.g. 411 at n=5,  ..., 12752132 for n=53, so a number of size 10^14 or 10^20 or 10^50 for n=110 would just be a bigger blip.  So I guess I expect that for n=110 it still won't go to infinity. But the hunt is exciting, so if you can get time on Nadia's machine, it is definitely worth trying. 
+
+Best regards
+Neil 
+
+
+-----
+ agree that checking for cycles, especially really long cycles, is
+the bottleneck.
+
+However, if the cycle is short, that is easy and fast, I guess.
+
+So look at what happens with the starting string (100)^n. 
+n=110 is the big mystery (values of n below 110 are easily analyzed, as are many values above 110)
+
+the cycles lengths for n <= 109 are at most 36 (n=104) !
+
+So if I were programming it, I would not look for really long cycles 
+until I had gone out as far as I could.  Say I could run 10^15 steps.  If I got to 10^15 steps and there was no short cycle up to that point,
+and I could not go any further, I would stop,
+and run a separate program to look for a cycle of any length
+in the orbit.
+
+If that failed to find a cycle, I would study the orbit, all 10^15 terms,
+and I would look for a pattern. Some kind of recurrence.
+First thing, look at the lengths of the strings. Does that show any signs of intelligence?  Are the lengths growing in some predictable way?  If there is a pattern in the word-lengths, can that be explained by a recognizable pattern in the words themselves?
+
+But if the lengths of the words is an irregular sequence, that is also very interesting. Lars gives a graph of the lengths up to 38*10^11 (see the link in A291792) and there is no pattern at all that can be seen.  Which I find astonishing.
