@@ -93,3 +93,6 @@ and I would look for a pattern. Some kind of recurrence.
 First thing, look at the lengths of the strings. Does that show any signs of intelligence?  Are the lengths growing in some predictable way?  If there is a pattern in the word-lengths, can that be explained by a recognizable pattern in the words themselves?
 
 But if the lengths of the words is an irregular sequence, that is also very interesting. Lars gives a graph of the lengths up to 38*10^11 (see the link in A291792) and there is no pattern at all that can be seen.  Which I find astonishing.
+
+
+291793, degenerates, length of the period 26660, 100^5, 
