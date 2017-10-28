@@ -15,7 +15,7 @@ ${BIN}/tagi:	tagi
 
 
 clean::
-	rm -f *.o tag *.core
+	rm -f *.o tag *.core tests/*.new
 
 test::
 	./dotests
