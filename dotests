@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+#	tests
+
+TESTS="5 13 14 22 25 46 47 54 63 65 70 74 78 80 91 93 106"
+
+for i in ${TESTS}
+do
+	./tag "(100)^$i" 3 00 1101 >tests/$i.new || {
+		echo "error in test $i" 1>&2
+		continue
+	}
+	diff tests/$i tests/$i.new 
+done

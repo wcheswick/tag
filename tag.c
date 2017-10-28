@@ -1,4 +1,6 @@
+#define _WITH_GETLINE
 #include <stdio.h>
+
 #include <stdlib.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -11,6 +13,7 @@
 
 #define	MINBITS		1	// else sequence terminates
 
+#define TAGI	"tagi"		// our program for expanding input patterns
 
 int dflag = 0;
 
@@ -39,9 +42,10 @@ typedef struct pattern {
 
 
 char *initial_string;	// what we were called with
+char *pure_string;	// possibly expanded, just bits
 
 pattern start_pattern;
-pattern zero_add_pattern, one_add_pattern;
+pattern zero_add_bits, one_add_bits;
 int remove_head;
 
 long headptr = 0;	// the bit address of the head in the ring buffer 
@@ -230,26 +234,6 @@ if (dflag > 1) {
 }
 }
 
-// called with our string of bits.  
-
-void
-tag(void) {
-	while (taglen > 0) {
-//if (loopcount == 73) dflag = 2;
-		int b = head();
-		if (!b) 
-			append(zero_add_pattern.size, zero_add_pattern.bits);
-		else
-			append(one_add_pattern.size, one_add_pattern.bits);
-		loopcount++;
-		if (dflag)
-			dump();
-		if ((loopcount % STATUS_FREQ) == 0) {
-			show_status("status");
-		}
-	}
-}
-
 void
 append_bit(char c) {
 	switch (c) {
@@ -277,33 +261,20 @@ init_with_pattern(char *start) {
 	int repeat;
 	int i, n;
 
-	// initial bits first.  Maybe all the bits.
-
 	while (*cp && isdigit(*cp))
 		append_bit(*cp++);
-	if (*cp == '\0')
-		return;
-fprintf(stderr, "start=%s *cp=%c\n", start, *cp);
-
-	n = sscanf(cp, "(%s)^%d", bits, &repeat);
-fprintf(stderr, "start=%s n=%d bits=%s repeat=%d\n", start, n, bits, repeat);
-	if (n != 2 || repeat < 1) {
-		fprintf(stderr, "Bad input pattern: %s\n", cp);
-		exit(11);
+	if (*cp != '\n' && *cp != '\0') {
+		fprintf(stderr, "non-bits found in initial pattern: %s '%.02x\n",
+			start, *cp);
+		exit(13);
 	}
-
-	n = strlen(bits);
-	for (i=0; i<repeat; i++) {
-		int j;
-		for (j=0; j<n; j++)
-			append_bit(bits[j]);
-	}		
+	return;
 }
 
 // must be a string of ones and zeros, 0 - 8 bits long
 
 pattern
-parse_pattern(char *s) {
+parse_bits(char *s) {
 	pattern p;
 	int i;
 
@@ -334,6 +305,56 @@ parse_pattern(char *s) {
 	return p;
 }
 
+char *
+process_initial(char *input) {
+	char command[100000];
+	char *nonbit = strpbrk(input, "10");
+	char *linep = NULL;
+	size_t linecapp;
+	int n;
+	FILE *pfn;
+
+	if (nonbit== NULL)
+		return input;	// he gave us only bits: that's fine
+
+	// We have to process inputs like (100)^110
+	// This job is given to an external script, which can be
+	// arbitrarily complicated.
+
+	n = snprintf(command, sizeof(command), "%s '%s'", TAGI, input);
+	assert(n < sizeof(command));	// input string much too long
+
+	pfn = popen(command, "r");
+	n = getline(&linep, &linecapp, pfn);
+	if (n < 0) {
+		ferror(pfn);
+		exit(20);
+	}
+	n = fclose(pfn);
+	if (n) {
+		exit(21);
+	}
+	return linep;
+}
+
+void
+tag(void) {
+	while (taglen > 0) {
+//if (loopcount == 73) dflag = 2;
+		int b = head();
+		if (!b) 
+			append(zero_add_bits.size, zero_add_bits.bits);
+		else
+			append(one_add_bits.size, one_add_bits.bits);
+		loopcount++;
+		if (dflag)
+			dump();
+		if ((loopcount % STATUS_FREQ) == 0) {
+			show_status("status");
+		}
+	}
+}
+
 int
 usage(void) {
 	fprintf(stderr, "usage: tag [-d] bitpattern remove-count add-if-zero add-if-one\n");
@@ -357,8 +378,7 @@ main(int argc, char *argv[]) {
 		return usage();
 
 	initial_string = strdup(argv[0]);
-	init_with_pattern(argv[0]);
-dump();
+	init_with_pattern(process_initial(initial_string));
 
 	remove_head = atoi(argv[1]);
 	if (remove_head < 1) {
@@ -366,12 +386,12 @@ dump();
 		return 3;
 	}
 
-	zero_add_pattern = parse_pattern(argv[2]);
-	one_add_pattern = parse_pattern(argv[3]);
+	zero_add_bits = parse_bits(argv[2]);
+	one_add_bits = parse_bits(argv[3]);
 
 	if (dflag)
 		dump();
-exit(13);
+
 	tag();
 	terminate("died");
 	return 0;
