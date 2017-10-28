@@ -1,5 +1,3 @@
-Notes from Neil
-
 https://oeis.org/A291792
 
 William, There are a lot of different tag systems,
@@ -96,5 +94,303 @@ First thing, look at the lengths of the strings. Does that show any signs of int
 
 But if the lengths of the words is an irregular sequence, that is also very interesting. Lars gives a graph of the lengths up to 38*10^11 (see the link in A291792) and there is no pattern at all that can be seen.  Which I find astonishing.
 
+—
 
-291793, degenerates, length of the period 26660, 100^5, 
+speed notes on (100)^(110)
+
+@ 1GB
+seismo:		4:08
+coastal:	5:35
+ricinus:	16:30
+
+
+Dear Lars,  Congratulations - that was an amazing calculation!
+
+So it died by reaching the empty string!  (Not by going into a loop. Somehow I was thinking it would go into a cycle)
+
+That's a very nice graph, too (the graph of the lengths)
+
+I'm giving a talk tomorrow at Rutgers University, about new results in the OEIS, and I will mention this work (but only briefly).
+
+I will copy this message to my friend William Cheswick,
+https://en.wikipedia.org/wiki/William_Cheswick
+- we were colleagues at Bell Labs for many years, and I've been talking to him about this problem.
+
+Best regards
+Neil 
+
+Neil J. A. Sloane, President, OEIS Foundation.
+11 South Adelaide Avenue, Highland Park, NJ 08904, USA.
+Also Visiting Scientist, Math. Dept., Rutgers University, Piscataway, NJ.
+Phone: 732 828 6098; home page: http://NeilSloane.com
+Email: njasloane@gmail.com
+
+
+On Wed, Oct 4, 2017 at 8:10 AM, Lars Blomberg <larsl.blomberg@comhem.se> wrote:
+Neil,
+
+ 
+
+A291792(18)=110 is now a fact!
+
+After 14 days the iterations died.
+
+Number of iterations          43913328040672
+
+Longest word in orbit         31299218
+
+Position of longest word in orbit             14392308412264
+
+A new graph is attached.
+
+I will update A291792 in the next few days.
+
+ 
+
+Best regards,
+
+Lars
+
+ 
+
+Från: Neil Sloane [mailto:njasloane@gmail.com] 
+Skickat: den 13 september 2017 02:40
+Till: Lars Blomberg <larsl.blomberg@comhem.se>
+Ämne: Re: very impressive calculation for A291792
+
+ 
+
+Lars,  May I have your permission to include your comments
+
+on that calculation, and the accompanying graph, in A291792?
+
+Hoping you will agree, I have gone ahead and done so. But if 
+
+you are not happy with this then I will delete them.
+
+ 
+
+I think anyone looking at this sequence will wonder how you did the calculation, and will be grateful for those comments.
+
+ 
+
+And the graph is amazing - what will happen next?  A "cliff-hanger", in fictional terms!
+
+ 
+
+I have two big public talks about the OEIS coming up in October, and I will certainly mention this sequence.
+
+ 
+
+
+
+Best regards
+
+Neil 
+
+ 
+
+Neil J. A. Sloane, President, OEIS Foundation.
+
+11 South Adelaide Avenue, Highland Park, NJ 08904, USA.
+
+Also Visiting Scientist, Math. Dept., Rutgers University, Piscataway, NJ.
+
+Phone: 732 828 6098; home page: http://NeilSloane.com
+
+Email: njasloane@gmail.com
+
+ 
+
+ 
+
+On Mon, Sep 11, 2017 at 1:40 PM, Lars Blomberg <larsl.blomberg@comhem.se> wrote:
+
+Neil,
+
+ 
+
+Here is an overview of the method I have been using.
+
+ 
+
+Build the words in a large byte array. Each iteration just adds 00 or 1101 to the end
+
+and removes 3 bytes from the beginning, without moving the whole word, just keeping track
+
+of the length of the word and where it starts within the array.
+
+When the word reaches the end of the array it is moved to the beginning.
+
+This allows for very fast iterations, as long as the word is substantially shorter
+
+than the array.
+
+ 
+
+The size of the byte array was 10^7 for the A291792 calculation, and it failed
+
+when the word reached this length. It took a little over one day.
+
+Byte array size of 10^8 is feasible, maybe even 10^9.
+
+ 
+
+As for cycle detection, the words at iterations A: k*10^5 and B: (k+1)*10^5 are saved.
+
+For iterations above B when the current word has same length as B (fast test),
+
+then check if the current word is equal to the one at B. If so, we have a cycle
+
+whose length can be determined simply by continue iterating.
+
+When the current iteration reaches C: (k+2)*10^5, move B->A, C->B, and continue.
+
+ 
+
+The cycle has started somewhere between A and B. So restart iterations at A
+
+and now save all words to be able to pinpoint the start of the cycle.
+
+However, I need to save up to 10^5 words of length 10^8 (or 10^9) which requires
+
+storing 10^13 (10^14) bytes which is too much at least for my computer.
+
+ 
+
+Note, however, that I can determine qualitatively if the fate is "empty" or "cycle"
+
+without the heavy demand on memory.
+
+ 
+
+As an illustration I attach a graph of the words lengths for the 38*10^11 iterations
+
+of "110".
+
+ 
+
+I will start a new run with a larger byte array.
+
+Also, some further optimizations may be possible.
+
+And I must handle the problem that Microsoft forces reboot of my computer
+
+when they have updated their software.
+
+There seems to be no way to avoid this (terrible!).
+
+ 
+
+-----------
+
+ 
+
+As for the infinity of the orbit of "110", I have no idea.
+
+Obviously, just iterating will never show the infinity of the orbit,
+
+it must be shown by mathematics.
+
+ 
+
+Yes, I am interested in looking at the other similar sequences that you mention.
+
+No, I am not opposed to other people (with larger/faster computers) being involved,
+
+but doing duplicate work maybe should be avoided.
+
+ 
+
+Best regards,
+
+Lars
+
+ 
+
+Från: Neil Sloane [mailto:njasloane@gmail.com] 
+Skickat: den 11 september 2017 09:23
+Till: Lars Blomberg <larsl.blomberg@comhem.se>
+Ämne: very impressive calculation for A291792
+
+ 
+
+Lars,  That is an amazing calculation you did!
+
+I'm referring to term 110 of A291792.
+
+ 
+
+Did you store the whole trajectory of that word? 38*10^11 steps,
+
+and each word having length up to 10^7.
+
+I can't imagine how you tested for a cycle!
+
+ 
+
+---------
+
+ 
+
+By the way, that sequence comes from the Post tag system {00 / 1101}, and is given in Table 1 of the article by Asveld.
+
+ 
+
+There are other sequences in his table, and there is also the similar Watanabe tag system which is based on {00 / 1011}.
+
+ 
+
+I've been looking at all these sequences, and I just added the following comment to "your" sequence A291792:
+
+ 
+
+Asveld's Table 1 gives data about the behavior of Post's 3-shift tag system {00/1101} applied to the word (100)^n. The first column gives n, the nonzero values in column 2 give A291792, and columns 3 through 7 give A284119, A291793 (or A284121), A291794, A291795, A291796. For the corresponding data for Watanabe's 3-shift tag system {00/1011} applied to (100)^n see A292089, A292090, A292091, A292092, A292093, A292094.
+
+ 
+
+Most of these sequences need more terms!
+
+ 
+
+(I wrote a very naive Maple program to produce the first 24 terms of the {00 / 1011} sequences.  I included the program in A292089
+
+just to document what I did.)
+
+ 
+
+-------
+
+ 
+
+It is an long-standing open question whether the Post tag system {00 / 1101} 
+
+has an unbounded orbit. Besides Emil Post himself, Marvin Minsky studied this question, and so did Asveld, of course, and several other people.
+
+ 
+
+Your work suggests that there is a chance that (100)^110 has an infinite orbit. What do you think?  My guess is that it will eventually either die, or go into a cycle. But if it were infinite, that would be exciting.
+
+ 
+
+Are you planning to work more on this case?  If not, I might ask 
+
+other people to help with the computation.  But only with your permission.
+
+
+
+Best regards
+
+Neil 
+
+ 
+
+Neil J. A. Sloane, President, OEIS Foundation.
+
+11 South Adelaide Avenue, Highland Park, NJ 08904, USA.
+
+Also Visiting Scientist, Math. Dept., Rutgers University, Piscataway, NJ.
+
+Phone: 732 828 6098; home page: http://NeilSloane.com
+
+Email: njasloane@gmail.com
