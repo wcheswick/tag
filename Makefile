@@ -1,8 +1,8 @@
-CFLAGS+=-Wall -Wno-unused-variable -g -O0
+CFLAGS+=-Wall -g # -O0
 BIN=${HOME}/bin
 
 tag:	tag.c
-	${CC} ${CFLAGS} tag.c -lm -o tag
+	${CC} ${CFLAGS} tag.c -lm -lmd -o tag
 
 
 install::	${BIN}/tag ${BIN}/tagi
@@ -17,5 +17,8 @@ ${BIN}/tagi:	tagi
 clean::
 	rm -f *.o tag *.core tests/*.new
 
-test::
+test::	tag
 	./dotests
+
+looptest::	tag
+	./tag -T -d "(100)^4" 3 00 1101

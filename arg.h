@@ -1,4 +1,5 @@
 /* A really simple argument processor from Plan 0 */
+/* $Id: arg.h,v 1.1 2006/08/29 16:02:29 ches Exp $ */
 
 char *argv0;
 #define ARGBEGIN        for((argv0? 0: (argv0 = *argv)),argv++,argc--;\
@@ -6,6 +7,7 @@ char *argv0;
                             argc--, argv++) {\
                                 char *_args, *_argt;\
                                 char _argc;\
+                                _argt = NULL;  /* To avoid compiler warning if ARGF is not used */\
                                 _args = &argv[0][1];\
                                 if(_args[0]=='-' && _args[1]==0){\
                                         argc--; argv++; break;\

@@ -6,8 +6,10 @@
 #include <sys/types.h>
 #include <string.h>
 #include <assert.h>
+#include <sha.h>
 
 #include "arg.h"
+#define USED(x) ((void)(x))
 
 #define HEADBITS	1
 
@@ -16,6 +18,7 @@
 #define TAGI	"tagi"		// our program for expanding input patterns
 
 int dflag = 0;
+int Tflag = 0;
 
 typedef u_char entry_t;
 
@@ -35,11 +38,22 @@ entry_t *ringbuffer = 0;
 #define STATUS_FREQ	1000000000
 #define LONGEST_RUN_TOLERANCE	1000000000
 
+typedef unsigned long long uulong;
+
 typedef struct pattern {
 	int 	size;	// <=8
 	u_char	bits;	// right justified
 } pattern;
 
+typedef struct tagsum {		// for finding loops
+	uint64_t length;
+	uint64_t digest;
+} tagsum_t;
+
+typedef struct full_bits_t {
+	int length;
+	u_char *bits;
+} full_bits_t;
 
 char *initial_string;	// what we were called with
 char *pure_string;	// possibly expanded, just bits
@@ -51,16 +65,18 @@ int remove_head;
 long headptr = 0;	// the bit address of the head in the ring buffer 
 long tailptr = 0;	// the bit address of the head in the ring buffer 
 
-u_long taglen = 0;	// length of our tag stream, in bits
-u_long loopcount = 0;
+uint64_t taglen = 0;	// length of our tag stream, in bits
+uint64_t loopcount = 0;
 
-u_long longesttag = 0;
-u_long sincelongest = 0;
+uint64_t longesttag = 0;
+uint64_t sincelongest = 0;
 
-#ifdef oldhash
-u_long hash = 0;	// a fairly unique hash of a result
-int hashtail = sizeof(hash)*8 - 1;
-#endif
+#define SUMSIZE	33554432	// 2^25
+
+tagsum_t summary[SUMSIZE];
+uint64_t first_sum = 0;
+size_t sum_count = 0;
+
 
 void
 show_status(char *status) {
@@ -69,34 +85,54 @@ show_status(char *status) {
 }
 
 void
-terminate(char *status) {
-	printf("%s	%s	%lu\n", initial_string, status, loopcount);
+terminate(int n, char *status) {
+	printf("%-10s  %10d  %s\n", initial_string, n, status);
 	exit(0);
 }
 
-void
-dump(void) {
-	u_long i;
-	int n = 4;
+// get the full bit string into an array of u_char for the current
+// string. The memory in full->bits is only defined until the next call
+// to this routine.
 
-	printf("%-4lu %3lu  \"", loopcount, taglen);
+u_char *bitmem = 0;
+size_t bitmemsize = 0;
+
+void
+extract_full_bits(full_bits_t *full) {
+	u_long i;
+	u_char *bp;
+
+	full->length = taglen;
+	if (full->length+1 > bitmemsize) {
+		bitmemsize = taglen * 1.25;
+		bitmem = (u_char*)realloc(bitmem, bitmemsize);
+		assert(bitmem);	// out of memory
+	}
+	full->bits = bitmem;
+	bp = full->bits;
 
 	for (i=headptr; i!=tailptr;  ) {
 		u_char mask = 1<<(7 - (i % 8));
 		u_char b = ringbuffer[i/8] & mask;
-		if (dflag > 1) {
-			if (n-- == 0 ) {
-				putc(' ', stdout);
-				n = 4-1;
-			}
-		}
-		putc(b ? '1' : '0', stdout);
+		*bp++ = b ? '1' : '0';
 		i++;
 		if (i/8 == ringbufsize)
 			i = 0;
 	}
+	*bp = '\0';
+}
+
+void
+dump(void) {
+	full_bits_t full;
+
+	printf("%-4lu %3lu  \"", loopcount, taglen);
+	extract_full_bits(&full);
+	fwrite(full.bits, 1, full.length, stdout);
 	printf("\"");
 	if (dflag > 1) {
+		int i;
+
 		printf("  %ld/%ld %ld/%ld  ",
 			headptr/8, headptr % 8,
 			tailptr/8, tailptr % 8);
@@ -112,18 +148,12 @@ head(void) {
 	u_char b = ringbuffer[headptr/8] & mask;	// get the first bit
 
 	if (taglen < remove_head) {
-		terminate("Died");
+		terminate(loopcount, "Died");
 	}
 	headptr += remove_head;
 	if (headptr/8 == ringbufsize)	// new address is just the bits
 		headptr = headptr % 8;
 	taglen -= remove_head;
-
-#ifdef oldhash
-	hash = hash << remove_head;
-	hashtail += remove_head;
-#endif
-
 	return b;
 }
 
@@ -137,7 +167,7 @@ if (dflag > 1)	printf("** end of buffer\n");
 		printf("** more memory: %lu MB\n", ringbufsize/1000000);
 		ringbuffer = (entry_t *)realloc(ringbuffer, ringbufsize);
 		if (ringbuffer == 0) 
-			terminate("out of memory");
+			terminate(loopcount, "out of memory");
 	} else {
 		tailptr = tailptr % 8;	// back to beginning of the buffer
 		ringbuffer[tailptr/8] = 0;
@@ -153,23 +183,6 @@ append(int n, int bits) {
 	int ba = tailptr % 8;
 	u_char mask = (1<<n) - 1;
 	int shift = 7 - ba - (n-1);
-
-#ifdef oldhash
-	int hashshift = hashtail - (n-1);
-	if (hashshift >= 0) {
-		hash = hash ^ ((u_long)bits << hashshift);
-		hashtail = hashshift - 1;
-		if (hashtail < 0)
-			hashtail = sizeof(hash)*8 - 1;
-	} else {
-		hashshift = -hashshift;
-		hash = hash ^ ((u_long)bits >> hashshift);
-		hashtail = sizeof(hash)*8 - 1;
-		hash = hash ^ (((u_long)bits % 
-			(1<<-hashshift)) << (hashtail - (hashshift + 1)));
-		hashtail -= hashshift;
-	}
-#endif
 
 	taglen += n;
 	if (taglen > longesttag) {
@@ -257,9 +270,6 @@ append_bit(char c) {
 void
 init_with_pattern(char *start) {
 	char *cp = start;
-	char bits[1000];
-	int repeat;
-	int i, n;
 
 	while (*cp && isdigit(*cp))
 		append_bit(*cp++);
@@ -337,8 +347,81 @@ process_initial(char *input) {
 	return linep;
 }
 
+// digest the answer.  This is probably way overkill.
+
+uint64_t
+make_digest(void) {
+	full_bits_t full;
+	u_char sha1_digest[20];
+	SHA_CTX context;
+	uint64_t digest;
+	int i;
+
+	extract_full_bits(&full);
+//fprintf(stderr, "%-25s", full.bits);
+	SHA1_Init(&context);
+	SHA1_Update(&context, full.bits, full.length);
+	SHA1_Final(sha1_digest, &context);
+
+	// digest it to 64 bits
+
+	digest = 0;
+	for (i=0; i<sizeof(sha1_digest); i++) {
+		digest ^= (uint64_t)sha1_digest[i] <<
+			(sizeof(digest) - (i % sizeof(digest)) - 1)*8;
+	}
+	return digest;
+}
+
+void
+add_to_summary(void) {
+	int i = loopcount - first_sum;
+	tagsum_t sum;
+
+	assert(i < SUMSIZE);	// oops, too long
+	sum.length = taglen;
+	sum.digest = make_digest();
+	summary[sum_count++] = sum;
+//	if (Tflag)
+//		fprintf(stderr, " %.16lx	",  sum.digest);
+}
+
+void
+check_cycles(void) {	// Using Brent's algorithm
+	int x0 = 0;
+	int turtle = x0;
+	int rabbit = x0+1;
+	int lam = 1;
+	int power = 1;
+	int mu;
+	char buf[100];
+
+	while (summary[rabbit].digest != summary[turtle].digest) {
+		if (lam == power ) {
+			lam = 0;
+			power *= 2;
+			turtle = rabbit;
+		}
+		lam++;
+		rabbit++;
+		if (rabbit >= sum_count)
+			return;
+	}
+
+	turtle = rabbit = x0;
+	rabbit = x0 + lam;
+
+	for (mu=0; summary[rabbit+mu].digest != summary[turtle+mu].digest;)
+		mu++;
+
+	snprintf(buf, sizeof(buf), "period %d", lam);
+	terminate(mu+1, buf);
+}
+
 void
 tag(void) {
+	uint64_t next_cycle_check = 128;
+
 	while (taglen > 0) {
 //if (loopcount == 73) dflag = 2;
 		int b = head();
@@ -347,10 +430,24 @@ tag(void) {
 		else
 			append(one_add_bits.size, one_add_bits.bits);
 		loopcount++;
-		if (dflag)
-			dump();
 		if ((loopcount % STATUS_FREQ) == 0) {
 			show_status("status");
+		}
+
+if (Tflag && loopcount >= 300) {
+	show_status("debug exit");
+	exit(13);
+}
+		add_to_summary();
+		if (dflag)
+			dump();
+		if (loopcount == next_cycle_check) {
+			check_cycles();
+			next_cycle_check *= 2;
+			if (next_cycle_check > SUMSIZE) {
+				show_status("DEBUG: cycled out");
+				exit(13);
+			}
 		}
 	}
 }
@@ -363,13 +460,12 @@ usage(void) {
 
 int
 main(int argc, char *argv[]) {
-	char *raw_pattern;
-
 	ringbufsize = RBUFSIZE;
 	ringbuffer = (entry_t *)malloc(ringbufsize);
 
 	ARGBEGIN {
 	case 'd':	dflag++;	break;
+	case 'T':	Tflag++;	break;
 	default:
 		return usage();
 	} ARGEND;
@@ -393,6 +489,6 @@ main(int argc, char *argv[]) {
 		dump();
 
 	tag();
-	terminate("died");
+	terminate(loopcount, "died");
 	return 0;
 }
