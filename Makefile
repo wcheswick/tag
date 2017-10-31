@@ -1,9 +1,18 @@
-CFLAGS+=-Wall -g # -O0
 BIN=${HOME}/bin
+detected_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+
+CFLAGS+=-Wall -g -I/opt/local/include
+
+ifeq ($(detected_OS),FreeBSD)
+endif
+
+ifeq ($(detected_OS),Darwin)  # Mac OS X
+CFLAGS += -I/opt/local/include/openssl
+LDFLAGS +=/opt/local/lib/libcrypto.a
+endif
 
 tag:	tag.c
-	${CC} ${CFLAGS} tag.c -lm -lmd -o tag
-
+	${CC} ${CFLAGS} tag.c ${LDFLAGS} -o tag
 
 install::	${BIN}/tag ${BIN}/tagi
 

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <string.h>
 #include <assert.h>
+
 #include <sha.h>
 
 #include "arg.h"
@@ -80,7 +81,7 @@ size_t sum_count = 0;
 
 void
 show_status(char *status) {
-	fprintf(stderr, "%s: %ld longest=%ld sincelongest=%ld length: %lu, %.1e \n", 
+	fprintf(stderr, "%s: %llu longest=%llu sincelongest=%llu length: %llu, %.1e \n", 
 		status, loopcount, longesttag, sincelongest, taglen, (double)taglen);
 }
 
@@ -126,7 +127,7 @@ void
 dump(void) {
 	full_bits_t full;
 
-	printf("%-4lu %3lu  \"", loopcount, taglen);
+	printf("%-4llu %3llu  \"", loopcount, taglen);
 	extract_full_bits(&full);
 	fwrite(full.bits, 1, full.length, stdout);
 	printf("\"");
