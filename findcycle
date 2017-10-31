@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+prog=findcycle
+usage="$prog [tagoutput]"
+#
+#	Find mu and lambda, the start and length, of cycles from
+#	tag debugging output.  E.g.:
+#
+#	tag -d "(100)^109" 3 00 1101 | findloop
+
+TMP=$TMPDIR/$prog
+
+sort -k3 -k1n $* |
+uniq -c -f2 | 
+grep -v '^ *1 ' >$TMP
+
+mu=`sed 1q $TMP | cut -f2 -d" "`
+lambda=`wc -l <$TMP | tr -d ' '`	# remove blanks
+
+echo $mu $lambda
+

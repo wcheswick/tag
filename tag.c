@@ -36,7 +36,7 @@ entry_t *ringbuffer = 0;
 #define RBUFSIZEINCR	(100*1000000)
 #endif
 
-#define STATUS_FREQ	1000000000
+#define STATUS_FREQ	100000000
 #define LONGEST_RUN_TOLERANCE	1000000000
 
 typedef unsigned long long uulong;
