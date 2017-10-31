@@ -6,10 +6,12 @@ TIME="/usr/bin/time sleep 1 2>&1 | awk '{print $3 " " $4}'"
 
 # 114 is lengthy >13m
 
-traps="114|120|121|133|149|163"
+# function add_to_summary, file tag.c, line 382. Abort trap: 6
+traps="114|120|121|133|149|163"	
+
 longones="110"
 
-for i in `seq 109`
+for i in `seq 164`
 do
 	case $i in
 	$longones|$traps)

@@ -8,13 +8,16 @@ include Makefile-${OS}.inc
 tag:	tag.c
 	${CC} ${CFLAGS} tag.c -o tag
 
-install::	${BIN}/tag ${BIN}/tagi
+install::	${BIN}/tag ${BIN}/tagi ${BIN}/findcycle
 
 ${BIN}/tag:	tag
 	cp tag ${BIN}/tag
 
 ${BIN}/tagi:	tagi
 	cp tagi ${BIN}/tagi
+
+${BIN}/findcycle:	findcycle
+	cp findcycle ${BIN}/findcycle
 
 
 clean::

@@ -7,6 +7,9 @@ usage="$prog [tagoutput]"
 #	tag debugging output.  E.g.:
 #
 #	tag -d "(100)^109" 3 00 1101 | findloop
+#
+#	writes mu and lambda to stdout.  Also how many repeats were encountered
+#	before termination.
 
 TMP=$TMPDIR/$prog
 
@@ -16,6 +19,6 @@ grep -v '^ *1 ' >$TMP
 
 mu=`sed 1q $TMP | cut -f2 -d" "`
 lambda=`wc -l <$TMP | tr -d ' '`	# remove blanks
+repeats=`sed 1q $TMP | cut -f1 -d" "`
 
-echo $mu $lambda
-
+echo $mu $lambda $repeats
