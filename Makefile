@@ -1,7 +1,7 @@
 OS!=uname -s
 
 BIN=${HOME}/bin
-CFLAGS+=-Wall -Wno-format -g -I/opt/local/include
+CFLAGS+=-Wall -O3 -g -I/opt/local/include
 
 include Makefile-${OS}.inc
 

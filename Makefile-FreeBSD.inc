@@ -1,1 +1,2 @@
-CFLAGS+=-lmd
+CFLAGS+=-lmd -Wno-format
+
