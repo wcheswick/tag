@@ -1,18 +1,12 @@
+OS!=uname -s
+
 BIN=${HOME}/bin
-detected_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+CFLAGS+=-Wall -Wno-format -g -I/opt/local/include
 
-CFLAGS+=-Wall -g -I/opt/local/include
-
-ifeq ($(detected_OS),FreeBSD)
-endif
-
-ifeq ($(detected_OS),Darwin)  # Mac OS X
-CFLAGS += -I/opt/local/include/openssl
-LDFLAGS +=/opt/local/lib/libcrypto.a
-endif
+include Makefile-${OS}.inc
 
 tag:	tag.c
-	${CC} ${CFLAGS} tag.c ${LDFLAGS} -o tag
+	${CC} ${CFLAGS} tag.c -o tag
 
 install::	${BIN}/tag ${BIN}/tagi
 
