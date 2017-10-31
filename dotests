@@ -2,35 +2,42 @@
 #
 #	tests
 
-TIME="/usr/bin/time sleep 1 2>&1 | awk '{print $3 " " $4}'"
-
 # 114 is lengthy >13m
 
-# function add_to_summary, file tag.c, line 382. Abort trap: 6
-traps="114|120|121|133|149|163"	
-
-longones="110"
-
-for i in `seq 164`
+for i in `seq 200`
 do
 	case $i in
-	$longones|$traps)
-		continue;	# skip this one
+	10|114|120|121|133|149|163|180|182|183|184|195)
+		# function add_to_summary, file tag.c, line 382. Abort trap: 6
+		continue;;
+	114)
+		continue;;	# runs more than 13 minutes
+	110)
+		continue;;	# runs a very long time
 	esac
 
-	./tag "(100)^$i" 3 00 1101 | tee tests/$i.new || {
+	tag "(100)^$i" 3 00 1101 | tee tests/$i.new || {
 		echo "error in test $i" 1>&2
 		continue
 	}
+
 	if [ ! -s tests/$i ]
 	then
 		mv tests/$i.new tests/$i
 	else
-		diff tests/$i tests/$i.new
-		mv tests/$i.new tests/$i
+		oldline=`sed 1q tests/$i`
+		set $oldline
+		shift; shift
+		old=`echo $*`
+
+		newline=`sed 1q tests/$i.new`
+		set $newline
+		shift; shift
+		new=`echo $*`
+
+		if [ "$new" != "$old" ]
+		then
+			echo was $oldline
+		fi
 	fi
 done
-
-exit 0
-
-TESTS="5 13 14 22 25 46 47 54 63 65 70 74 78 80 91 93 106"

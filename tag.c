@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <string.h>
 #include <assert.h>
 
@@ -72,12 +73,27 @@ uint64_t loopcount = 0;
 uint64_t longesttag = 0;
 uint64_t sincelongest = 0;
 
-#define SUMSIZE	33554432	// 2^25
+#define SUMSIZE	67108864	// 2^26
 
 tagsum_t summary[SUMSIZE];
 uint64_t first_sum = 0;
 size_t sum_count = 0;
 
+typedef unsigned long long longtime_t;
+longtime_t start_time;
+
+/*
+ * real time, milliseconds
+ */
+longtime_t
+rtime_ms(void) {
+        struct timeval tp;
+        struct timezone tz;
+
+        if (gettimeofday(&tp, &tz) < 0)
+                perror("gettimeofday");
+        return (tp.tv_sec*1000000 + tp.tv_usec)/1000;
+}
 
 void
 show_status(char *status) {
@@ -87,7 +103,10 @@ show_status(char *status) {
 
 void
 terminate(int n, char *status) {
-	printf("%-10s  %10d  %s\n", initial_string, n, status);
+	longtime_t finish_time = rtime_ms();
+	double elapsed = (finish_time - start_time)/1000.0;
+
+	printf("%-10s %10.3f %10d  %s\n", initial_string, elapsed, n, status);
 	exit(0);
 }
 
@@ -107,7 +126,8 @@ extract_full_bits(full_bits_t *full) {
 	if (full->length+1 > bitmemsize) {
 		bitmemsize = taglen * 1.25;
 		bitmem = (u_char*)realloc(bitmem, bitmemsize);
-		assert(bitmem);	// out of memory
+		if (!bitmem)
+			terminate(loopcount, "out of memory (extract)");
 	}
 	full->bits = bitmem;
 	bp = full->bits;
@@ -379,7 +399,9 @@ add_to_summary(void) {
 	int i = loopcount - first_sum;
 	tagsum_t sum;
 
-	assert(i < SUMSIZE);	// oops, too long
+	if (i >= SUMSIZE)
+		terminate(loopcount, "out of memory (summary too long)");
+
 	sum.length = taglen;
 	sum.digest = make_digest();
 	summary[sum_count++] = sum;
@@ -416,7 +438,7 @@ check_cycles(void) {	// Using Brent's algorithm
 		mu++;
 
 	snprintf(buf, sizeof(buf), "period %d", lam);
-	terminate(mu+1, buf);
+	terminate(mu+1, buf);	// adjust from index to ordinal
 }
 
 void
@@ -461,6 +483,8 @@ usage(void) {
 
 int
 main(int argc, char *argv[]) {
+	start_time = rtime_ms();
+
 	ringbufsize = RBUFSIZE;
 	ringbuffer = (entry_t *)malloc(ringbufsize);
 

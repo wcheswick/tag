@@ -11,14 +11,16 @@ usage="$prog [tagoutput]"
 #	writes mu and lambda to stdout.  Also how many repeats were encountered
 #	before termination.
 
-TMP=$TMPDIR/$prog
-
-sort -k3 -k1n $* |
-uniq -c -f2 | 
-grep -v '^ *1 ' >$TMP
-
-mu=`sed 1q $TMP | cut -f2 -d" "`
-lambda=`wc -l <$TMP | tr -d ' '`	# remove blanks
-repeats=`sed 1q $TMP | cut -f1 -d" "`
-
-echo $mu $lambda $repeats
+sort -k3 -k1n $* |	# bring patterns together, earliest first
+uniq -c -f2 | 		# count them
+grep -v '^ *1 ' |		# those appearing once aren't in the cycle
+sort -k2n |		# earliest first
+awk '
+NR == 1 {
+	mu=$2
+	repeats=$1
+	next }
+{	next }
+END {	lambda=NR
+	print mu, lambda, repeats
+}'

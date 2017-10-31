@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+prog=checkcycles
+usage=$prog
+#
+#	run through our tests and verify computed cycles.
+#
+#	we rerun the whole tag computation, so don't do it on the slow
+#	ones.
+
+for i in `ls tests/* | grep -v '\.new$'`
+do
+	oldresult=`tail -1 $i`
+	set $oldresult
+	pattern="$1"; shift
+	time="$1"; shift
+	loops=$1; shift
+	result="$*"
+
+	case "$result" in
+	period*)
+		shift
+		period=$1
+		;;
+	*)	continue
+	esac
+
+	if [ $loops -gt 1000000 ]
+	then	# temp. efficiency test
+		continue
+	fi
+
+	check=`tag -d "$pattern" 3 00 1101 | findcycle`
+	set $check
+	mu=$1;		shift
+	lambda=$1;	shift
+	if [ $mu -ne $loops -o $lambda -ne $period ]
+	then
+		echo "$prog: cycle error: $oldresult"
+		echo "       should be $mu period $lambda"
+	fi
+done
