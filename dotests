@@ -1,20 +1,30 @@
 #!/bin/sh
 #
-#	tests
+#	tests [numbers]
 
 # 114 is lengthy >13m
 
-for i in `seq 200`
+if [ $# -gt 0 ]
+then
+	tests="$*"
+else
+	tests=`seq 200`
+fi
+
+for i in $tests 
 do
-	case $i in
-	10|114|120|121|133|149|163|180|182|183|184|195)
-		# function add_to_summary, file tag.c, line 382. Abort trap: 6
-		continue;;
-	114)
-		continue;;	# runs more than 13 minutes
-	110)
-		continue;;	# runs a very long time
-	esac
+	if [ $# -eq 0 ]
+	then
+		case $i in
+		114|120|121|133|149|163|180|182|183|184|195)
+			# function add_to_summary, file tag.c, line 382. Abort trap: 6
+			continue;;
+		114)
+			continue;;	# runs more than 13 minutes
+		110)
+			continue;;	# runs a very long time
+		esac
+	fi
 
 	tag "(100)^$i" 3 00 1101 | tee tests/$i.new || {
 		echo "error in test $i" 1>&2
