@@ -4,6 +4,8 @@ prog=dotests
 #
 #	tests [numbers]
 
+#TAGFLAGS="-T"
+
 # 114 is lengthy >13m
 
 if [ $# -gt 0 ]
@@ -21,17 +23,14 @@ do
 	if [ $# -eq 0 ]
 	then
 		case $i in
-		114|120|121|133|149|163|180|182|183|184|195)
-			# function add_to_summary, file tag.c, line 382. Abort trap: 6
-			continue;;
-		114)
-			continue;;	# runs more than 13 minutes
+		180)
+			continue;;	# runs a very long time
 		110)
 			continue;;	# runs a very long time
 		esac
 	fi
 
-	tag "(100)^$i" 3 00 1101 | tee tests/$i.new || {
+	tag $TAGFLAGS "(100)^$i" 3 00 1101 | tee tests/$i.new || {
 		echo "error in test $i" 1>&2
 		continue
 	}
@@ -43,18 +42,18 @@ do
 		mv tests/$i.new tests/$i
 	else
 		oldline=`sed 1q tests/$i`
-		set $oldline
+		set x $oldline; shift
 		shift; shift
 		old=`echo $*`
 
 		newline=`sed 1q tests/$i.new`
-		set $newline
+		set x $newline; shift
 		shift; shift
 		new=`echo $*`
 
 		if [ "$new" != "$old" ]
 		then
-			echo was $oldline
+			echo "$prog: was '$oldline'"
 		fi
 	fi
 done

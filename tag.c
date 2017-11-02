@@ -37,8 +37,13 @@ entry_t *ringbuffer = 0;
 #define RBUFSIZEINCR	(100*1000000)
 #endif
 
-#define STATUS_FREQ	100000000
-#define LONGEST_RUN_TOLERANCE	1000000000
+#define MILLION	((u_int64_t)1000000)
+#define BILLION	(MILLION*1000)
+#define TRILION (BILLION*1000)
+#define QUADRILLION	(TRILION*1000)
+
+#define STATUS_FREQ	(500*MILLION)
+#define LONGEST_RUN_TOLERANCE	(1*BILLION)
 
 typedef unsigned long long uulong;
 
@@ -73,11 +78,13 @@ uint64_t loopcount = 0;
 uint64_t longesttag = 0;
 uint64_t sincelongest = 0;
 
-#define SUMSIZE	67108864	// 2^26
+#define SUMSIZE	MILLION	// way more than we are using
 
 tagsum_t summary[SUMSIZE];
-uint64_t first_sum = 0;
+uint64_t first_sum;
 size_t sum_count = 0;
+int sums_to_collect;
+int late_cycle_detection;
 
 typedef unsigned long long longtime_t;
 longtime_t start_time;
@@ -97,8 +104,9 @@ rtime_ms(void) {
 
 void
 show_status(char *status) {
-	fprintf(stderr, "%s: %llu longest=%llu sincelongest=%llu length: %llu, %.1e \n", 
-		status, loopcount, longesttag, sincelongest, taglen, (double)taglen);
+	printf("%-10s @ %lld: len %lld  longest: %lld  since: %lld\n", 
+		initial_string, loopcount,
+		taglen, longesttag, sincelongest);
 }
 
 void
@@ -213,8 +221,8 @@ append(int n, int bits) {
 		sincelongest++;
 		if ((sincelongest % LONGEST_RUN_TOLERANCE) == 0) {
 			char buf[100];
-			snprintf(buf, sizeof(buf), "possible cycle (%.1e)", 
-				(double)sincelongest);
+			snprintf(buf, sizeof(buf), "possible cycle (%llu) %llu", 
+				sincelongest, LONGEST_RUN_TOLERANCE);
 			show_status(buf);
 		}
 	}
@@ -282,11 +290,6 @@ append_bit(char c) {
 		exit(10);
 	}
 }
-
-// This is a very crude parser.  It handles:
-// [bits][({bits})^count]
-//
-//	Anthing fancier should be done somewhere else.
 
 void
 init_with_pattern(char *start) {
@@ -405,8 +408,6 @@ add_to_summary(void) {
 	sum.length = taglen;
 	sum.digest = make_digest();
 	summary[sum_count++] = sum;
-//	if (Tflag)
-//		fprintf(stderr, " %.16lx	",  sum.digest);
 }
 
 void
@@ -437,40 +438,50 @@ check_cycles(void) {	// Using Brent's algorithm
 	for (mu=0; summary[rabbit+mu].digest != summary[turtle+mu].digest;)
 		mu++;
 
-	snprintf(buf, sizeof(buf), "period %d", lam);
-	terminate(mu+1, buf);	// adjust from index to ordinal
+	snprintf(buf, sizeof(buf), "%speriod %d", 
+		 late_cycle_detection ? "or before, ": "", lam);
+	terminate(first_sum+mu+1, buf);	// adjust from index to ordinal
+}
+
+#define INIT_CYCLE_CHECK_LEN	100000
+#define CYCLE_CHECK_FREQ	(10*MILLION)
+#define CYCLE_CHECK_LEN		100
+
+void
+start_sum_collection(int count) {
+	sums_to_collect = count;
+	first_sum = loopcount;
+	sum_count = 0;
+	late_cycle_detection = (loopcount != 0);
 }
 
 void
 tag(void) {
-	uint64_t next_cycle_check = 128;
+	// do aggressive cycle collection for the beginning of the sequence
+	start_sum_collection(INIT_CYCLE_CHECK_LEN);
 
 	while (taglen > 0) {
-//if (loopcount == 73) dflag = 2;
 		int b = head();
 		if (!b) 
 			append(zero_add_bits.size, zero_add_bits.bits);
 		else
 			append(one_add_bits.size, one_add_bits.bits);
 		loopcount++;
+		if (dflag)
+			dump();
+
 		if ((loopcount % STATUS_FREQ) == 0) {
 			show_status("status");
 		}
 
-if (Tflag && loopcount >= 300) {
-	show_status("debug exit");
-	exit(13);
-}
-		add_to_summary();
-		if (dflag)
-			dump();
-		if (loopcount == next_cycle_check) {
-			check_cycles();
-			next_cycle_check *= 2;
-			if (next_cycle_check > SUMSIZE) {
-				show_status("DEBUG: cycled out");
-				exit(13);
-			}
+		if (sums_to_collect) {
+			add_to_summary();
+			sums_to_collect--;
+			if (sums_to_collect == 0)
+				check_cycles();
+		} else if (loopcount % CYCLE_CHECK_FREQ == 0) {
+			// every once in a while, check for a short loop
+			start_sum_collection(CYCLE_CHECK_LEN);
 		}
 	}
 }
