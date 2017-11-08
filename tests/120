@@ -1,5 +1,1 @@
-<<<<<<< HEAD
-(100)^120       1.083   40000001  or before, period 10
-=======
-(100)^120     516.697   67108864  out of memory (summary too long)
->>>>>>> fece625a9aa26810300dbe99e4fa022f2cde593c
+(100)^120       1.007   40000001  or before, period 10
